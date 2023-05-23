@@ -146,6 +146,99 @@ class ExtractToOpposite(DirectoryPaneCommand):
 
         return
 
+class ExtractHere(DirectoryPaneCommand):
+    def __call__(self, url=None):
+
+        # This will get set if the automagically determined destination
+        #  directory exists, and will always be the default name when prompted
+        #  to manually choose a destination directory name.
+        originalName = None
+
+        if url is None:
+            workingFile = self.pane.get_file_under_cursor()
+            if workingFile:
+                url = workingFile
+
+        fileName = basename(url)
+
+        if _CHECK_EXTENSION:
+
+            try:
+                extension = fileName[fileName.rindex('.'):]
+            except ValueError:
+                show_alert("Failed to determine extension, aborting!")
+                return
+
+            if not extension in _SUPPORTED_EXTENSIONS:
+                show_alert("Unsupported extension, aborting!")
+                return
+
+            newDirName = fileName[0:fileName.rindex('.')]
+
+        else:
+
+            try:
+                newDirName = fileName[0:fileName.rindex('.')]
+
+            except ValueError:
+
+                message = "Archive has no extension.\n"
+                message += "Click 'YES' to enter a name "
+                message += "for the destination directory.\n"
+                message += "Click 'NO' to use the archive name.\n"
+                message += "Click 'ABORT' to abort extraction."
+
+                choice = show_alert(message, buttons = YES | NO | ABORT,
+                                    default_button = ABORT)
+
+                if choice == YES:
+                    newDirName, ok = show_prompt("Destination directory:",
+                                                 default=fileName)
+                    if not (newDirName and ok):
+                        return
+
+                elif choice == NO:
+                    newDirName = fileName
+
+                else:
+                    return
+
+        oppositePane = self.pane
+        oppositePaneUrl = oppositePane.get_path()
+        oppositePaneScheme, _ = splitscheme(resolve(oppositePaneUrl))
+        if oppositePaneScheme != 'file://':
+            show_alert("Can't extract to %s, aborting!" % oppositeScheme)
+            return
+
+        newDirUrl = join(oppositePaneUrl, newDirName)
+
+        while exists(newDirUrl):
+            if not originalName:
+                originalName = newDirName
+            message = newDirName + " already exists!\nEnter a different name?"
+            choice = show_alert(message, buttons = YES | ABORT,
+                                default_button = ABORT)
+            if choice == YES:
+                newDirName, ok = show_prompt("Destination directory:",
+                                                 default=newDirName)
+                if not (newDirName and ok):
+                    continue
+                else: newDirUrl = join(oppositePaneUrl, newDirName)
+
+        try:
+            mkdir(newDirUrl)
+        except (FileNotFoundError, NotImplementedError):
+            message = "Failed to create directory '"
+            message += newDirName + "', aborting!"
+            show_alert(message)
+            return
+
+        archive = as_human_readable(url)
+        destDir = as_human_readable(newDirUrl)
+
+        submit_task(ExtractArchive(archive, destDir))
+
+        return
 class CreateArchive(_7zipTaskWithProgress):
     def __init__(self, zip_path, src_path):
         super().__init__('Compressing ' + basename(src_path), size=100)

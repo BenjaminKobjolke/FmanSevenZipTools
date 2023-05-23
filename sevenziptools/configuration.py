@@ -14,13 +14,13 @@ data_directory = os.path.expanduser("~")
 settings = load_json('SevenZipTools.json', default={})
 result = settings.get('7zip', {})
 try:
-     os.mkdir(os.path.join(data_directory, "sevenziptools2"))
-     os.mkdir(os.path.join(data_directory, "sevenziptools2", "settings"))
+     os.mkdir(os.path.join(data_directory, "sevenziptools3"))
+     os.mkdir(os.path.join(data_directory, "sevenziptools3", "settings"))
 except FileExistsError:
      pass
-open(os.path.join(data_directory, "sevenziptools2", "settings", "settings.txt"), "a").close()
+open(os.path.join(data_directory, "sevenziptools3", "settings", "settings.txt"), "a").close()
 
-with open(os.path.join(data_directory, "sevenziptools2", "settings", "settings.txt"), 'w') as myfile:
+with open(os.path.join(data_directory, "sevenziptools3", "settings", "settings.txt"), 'w') as myfile:
      myfile.write(str(settings) + '\n')
 if result:
     try:
@@ -55,7 +55,7 @@ if result:
 else:
     _COMPARE_HASH = _HASH
 
-with open(os.path.join(data_directory, "sevenziptools2", "settings", "settings.txt"), 'a') as myfile:
+with open(os.path.join(data_directory, "sevenziptools3", "settings", "settings.txt"), 'a') as myfile:
     myfile.write(str(_USER_7ZIP) + '\n')
     myfile.write(str(_SUPPORTED_EXTENSIONS) + '\n')
     myfile.write(str(_CHECK_EXTENSION) + '\n')
