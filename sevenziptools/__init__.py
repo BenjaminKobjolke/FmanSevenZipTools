@@ -31,7 +31,7 @@ class _7zipTaskWithProgress(Task):
                     process.kill()
                     raise
                 # The \r appears on Windows only:
-                match = re.match('\r? *(\\d\\d?)% ', line)
+                match = re.match('\r? *(\\d{1,3})% ', line)
                 if match:
                     percent = int(match.group(1))
                     # At least on Linux, 7za shows progress going from 0 to
