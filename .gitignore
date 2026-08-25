@@ -1,0 +1,4 @@
+__pycache__/
+.claude/
+/PLAN_*.md
+tmp/commit_msg.tmp
