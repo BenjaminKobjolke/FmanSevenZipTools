@@ -12,5 +12,7 @@
     ],
     "tests": false
   },
-  "analysis_tests_answered": true
+  "analysis_tests_answered": true,
+  "analysis_code_quality_answered": true,
+  "project_id": 12371
 }
