@@ -14,12 +14,15 @@ import core.fs.zip
 import re
 import subprocess
 
-_FMAN_7ZIP = core.fs.zip._7ZIP_BINARY
+# fman++ renamed core.fs.zip._7ZIP_BINARY to SEVEN_ZIP_BINARY; upstream fman keeps the old name.
+_BINARY_ATTR = 'SEVEN_ZIP_BINARY' if hasattr(core.fs.zip, 'SEVEN_ZIP_BINARY') \
+               else '_7ZIP_BINARY'
+_FMAN_7ZIP = getattr(core.fs.zip, _BINARY_ATTR)
 
 class _7zipTaskWithProgress(Task):
     def run_7zip_with_progress(self, args, **kwargs):
         if _USER_7ZIP:
-            core.fs.zip._7ZIP_BINARY = _USER_7ZIP
+            setattr(core.fs.zip, _BINARY_ATTR, _USER_7ZIP)
         with core.fs.zip._7zip(args, pty=True, **kwargs) as process:
             for line in process.stdout_lines:
                 try:
@@ -27,7 +30,7 @@ class _7zipTaskWithProgress(Task):
                 except Task.Canceled:
                     # It's necessary to reset the binary if it was changed.
                     if _USER_7ZIP:
-                        core.fs.zip._7ZIP_BINARY = _FMAN_7ZIP
+                        setattr(core.fs.zip, _BINARY_ATTR, _FMAN_7ZIP)
                     process.kill()
                     raise
                 # The \r appears on Windows only:
@@ -41,7 +44,7 @@ class _7zipTaskWithProgress(Task):
                         self.set_progress(percent)
         # It's necessary to the binary if it was changed.
         if _USER_7ZIP:
-            core.fs.zip._7ZIP_BINARY = _FMAN_7ZIP
+            setattr(core.fs.zip, _BINARY_ATTR, _FMAN_7ZIP)
 
 class ExtractArchive(_7zipTaskWithProgress):
     def __init__(self, zip_path, dest_path):
