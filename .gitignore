@@ -2,3 +2,10 @@ __pycache__/
 .claude/
 /PLAN_*.md
 tmp/commit_msg.tmp
+tickets/
+HANDOFF.md
+claude-plans/
+PLAN.md
+graphify-out/
+code_analysis_results/
+.reasonix/
