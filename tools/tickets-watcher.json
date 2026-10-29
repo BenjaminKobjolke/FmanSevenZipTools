@@ -3,16 +3,38 @@
     "TICKETS_WATCHER_COMMANDS.md": 3
   },
   "command_check_scripts": [
-    "graphify_update.bat"
+    "graphify_update.bat",
+    "analyze_code_config.bat",
+    "analyze_code_config.example.bat",
+    "analyze_code.bat",
+    "analyze_changed_and_new_files.bat",
+    "fix_ruff_issues.bat",
+    "fix_ruff_issues_dry_run.bat"
   ],
-  "analysis_commands": [],
+  "analysis_commands": [
+    "tools\\analyze_changed_and_new_files.bat"
+  ],
   "analysis_commands_seen": {
     "scripts": [
-      "graphify_update.bat"
+      "graphify_update.bat",
+      "analyze_code_config.bat",
+      "analyze_code_config.example.bat",
+      "analyze_code.bat",
+      "analyze_changed_and_new_files.bat",
+      "fix_ruff_issues.bat",
+      "fix_ruff_issues_dry_run.bat"
     ],
     "tests": false
   },
   "analysis_tests_answered": true,
   "analysis_code_quality_answered": true,
-  "project_id": 12371
+  "analysis_command_kinds": {
+    "tools\\analyze_changed_and_new_files.bat": "code_quality"
+  },
+  "project_id": 12371,
+  "analysis_command_states": {
+    "tools\\analyze_changed_and_new_files.bat": {
+      "code_quality": "green"
+    }
+  }
 }
