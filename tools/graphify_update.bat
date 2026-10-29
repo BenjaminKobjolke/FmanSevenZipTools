@@ -47,6 +47,12 @@ if errorlevel 1 (
 echo === [1/2] live-graph AST refresh (no LLM) : %CODE_DIR% ===
 set "GRAPHIFY_OUT=%CD%\graphify-out"
 "%GRAPHIFY%" update "%CD%\%CODE_DIR%"
+set "RC=%ERRORLEVEL%"
+if not "%RC%"=="0" (
+  echo ERROR: graphify update failed with exit code %RC%.
+  popd
+  endlocal & exit /b %RC%
+)
 echo.
 
 echo === [2/2] smoke test: live root graph ===
@@ -56,16 +62,47 @@ if not exist "graphify-out\graph.json" (
   popd & endlocal & exit /b 1
 )
 REM Report directed flag + node count of the LIVE root graph (should be directed:True).
+set "GRAPHIFY_PYTHON=python"
 if exist "graphify-out\.graphify_python" (
   set /p GPY2=<graphify-out\.graphify_python
-  "!GPY2!" -c "import json;d=json.load(open('graphify-out/graph.json',encoding='utf-8'));print('directed:',d.get('directed'),'  nodes:',len(d.get('nodes',[])))"
+  set "GRAPHIFY_PYTHON="!GPY2!""
+) else (
+  where python >nul 2>nul
+  if errorlevel 1 (
+    where py >nul 2>nul
+    if errorlevel 1 (
+      echo ERROR: Python is required to validate graphify-out\graph.json.
+      popd & endlocal & exit /b 1
+    )
+    set "GRAPHIFY_PYTHON=py -3"
+  )
+)
+!GRAPHIFY_PYTHON! -c "import json;d=json.load(open('graphify-out/graph.json',encoding='utf-8'));print('directed:',d.get('directed'),'  nodes:',len(d.get('nodes',[])));raise SystemExit(0 if d.get('directed') else 1)"
+set "RC=!ERRORLEVEL!"
+if not "!RC!"=="0" (
+  echo ERROR: graphify-out\graph.json is invalid or not directed.
+  popd
+  endlocal & exit /b !RC!
 )
 echo.
 echo --- god nodes (top 5) ---
 "%GRAPHIFY%" god-nodes --top 5
+set "RC=%ERRORLEVEL%"
+if not "%RC%"=="0" (
+  echo ERROR: graphify god-nodes failed with exit code %RC%.
+  popd
+  endlocal & exit /b %RC%
+)
 echo.
 echo --- sample query ---
 "%GRAPHIFY%" query "What are the main modules and how do they connect?"
+set "RC=%ERRORLEVEL%"
+if not "%RC%"=="0" (
+  echo ERROR: graphify query failed with exit code %RC%.
+  popd
+  endlocal & exit /b %RC%
+)
 
 popd
 endlocal
+exit /b 0
