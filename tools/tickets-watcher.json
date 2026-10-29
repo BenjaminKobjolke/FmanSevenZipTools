@@ -1,0 +1,8 @@
+{
+  "files": {
+    "TICKETS_WATCHER_COMMANDS.md": 3
+  },
+  "command_check_scripts": [
+    "graphify_update.bat"
+  ]
+}
