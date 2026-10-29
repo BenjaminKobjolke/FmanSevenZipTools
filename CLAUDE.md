@@ -24,3 +24,20 @@ stays binding either way.
 
 Do not inline rules back into this file and do not use `@import` for either file —
 they are intentionally referenced, not imported.
+
+## Post-Implementation Code Analysis
+
+After any feature, completed plan, or bug fix, run the changed-files analyzer and fix every
+reported issue before considering the work complete:
+
+```powershell
+cmd /c ".\tools\analyze_changed_and_new_files.bat"
+```
+
+The command uses `--only-changed`, so findings are reported only for new or modified files
+relative to Git `HEAD` (including untracked files and excluding deletes). The analyzer writes
+per-rule reports to `code_analysis_results/`; a missing report means that rule found nothing.
+
+Run `tools\analyze_code.bat` for a whole-project audit, before a release or merge, after a
+shared-code refactor, or when the working tree is clean and a changed-files run would find no
+files.
