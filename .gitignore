@@ -9,3 +9,5 @@ PLAN.md
 graphify-out/
 code_analysis_results/
 .reasonix/
+coding-rules.json
+sevenziptools/graphify-out/
