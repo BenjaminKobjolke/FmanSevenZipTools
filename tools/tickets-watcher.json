@@ -33,8 +33,12 @@
   },
   "project_id": 12371,
   "analysis_command_states": {
-    "tools\\analyze_changed_and_new_files.bat": {
+    "tools/fix_ruff_issues.bat": {
       "code_quality": "green"
+    },
+    "tools\\analyze_changed_and_new_files.bat": {
+      "code_quality": "failed"
     }
-  }
+  },
+  "analysis_format_command": "tools/fix_ruff_issues.bat"
 }
