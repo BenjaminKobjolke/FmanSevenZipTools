@@ -12,6 +12,7 @@ from fman.url import as_human_readable
 import core.fs.zip
 
 from .configuration import _USER_7ZIP
+from .seven_zip_errors import describe_7zip_failure
 
 # fman++ renamed this attribute; upstream fman keeps the original name.
 _BINARY_ATTR = (
@@ -23,22 +24,30 @@ _FMAN_7ZIP = getattr(core.fs.zip, _BINARY_ATTR)
 
 
 class _7zipTaskWithProgress(Task):
-    def run_7zip_with_progress(self, args, **kwargs):
+    def run_7zip_with_progress(self, args, failure_hint: str = "", **kwargs):
         if _USER_7ZIP:
             setattr(core.fs.zip, _BINARY_ATTR, _USER_7ZIP)
         try:
-            with core.fs.zip._7zip(args, pty=True, **kwargs) as process:
-                for line in process.stdout_lines:
-                    try:
-                        self.check_canceled()
-                    except Task.Canceled:
-                        process.kill()
-                        raise
-                    match = re.match(r"\r? *(\d{1,3})% ", line)
-                    if match:
-                        percent = int(match.group(1))
-                        if percent > self.get_progress():
-                            self.set_progress(percent)
+            try:
+                with core.fs.zip._7zip(args, pty=True, **kwargs) as process:
+                    for line in process.stdout_lines:
+                        try:
+                            self.check_canceled()
+                        except Task.Canceled:
+                            process.kill()
+                            raise
+                        match = re.match(r"\r? *(\d{1,3})% ", line)
+                        if match:
+                            percent = int(match.group(1))
+                            if percent > self.get_progress():
+                                self.set_progress(percent)
+            except core.fs.zip._7zipError as error:
+                message = "7-Zip failed:\n" + describe_7zip_failure(
+                    error.output or "", error.returncode
+                )
+                if failure_hint:
+                    message += "\n" + failure_hint
+                show_alert(message)
         finally:
             if _USER_7ZIP:
                 setattr(core.fs.zip, _BINARY_ATTR, _FMAN_7ZIP)
@@ -48,11 +57,14 @@ class ExtractArchive(_7zipTaskWithProgress):
     def __init__(self, zip_path: str, dest_path: str) -> None:
         super().__init__("Extracting " + basename(zip_path), size=100)
         self._zip_path = zip_path
-        self._dest_path = "-o" + dest_path
+        self._dest_path = dest_path
 
     def __call__(self) -> None:
-        args = ["x", self._zip_path, self._dest_path]
-        self.run_7zip_with_progress(args)
+        args = ["x", self._zip_path, "-o" + self._dest_path]
+        failure_hint = (
+            "Files extracted before the error are in " + self._dest_path + "."
+        )
+        self.run_7zip_with_progress(args, failure_hint=failure_hint)
 
 
 def _get_hash(url, hash_type="crc32", consider_names=False):
