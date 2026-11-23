@@ -12,6 +12,7 @@ from fman.url import as_human_readable
 import core.fs.zip
 
 from .configuration import _USER_7ZIP
+from .extract_batch import ExtractFailure, ExtractJob, format_extract_summary
 from .seven_zip_errors import describe_7zip_failure
 
 # fman++ renamed this attribute; upstream fman keeps the original name.
@@ -25,46 +26,74 @@ _FMAN_7ZIP = getattr(core.fs.zip, _BINARY_ATTR)
 
 class _7zipTaskWithProgress(Task):
     def run_7zip_with_progress(self, args, failure_hint: str = "", **kwargs):
+        try:
+            self._run_7zip(args, **kwargs)
+        except core.fs.zip._7zipError as error:
+            message = "7-Zip failed:\n" + describe_7zip_failure(
+                error.output or "", error.returncode
+            )
+            if failure_hint:
+                message += "\n" + failure_hint
+            show_alert(message)
+
+    def _run_7zip(self, args, progress_offset: int = 0, **kwargs):
         if _USER_7ZIP:
             setattr(core.fs.zip, _BINARY_ATTR, _USER_7ZIP)
         try:
-            try:
-                with core.fs.zip._7zip(args, pty=True, **kwargs) as process:
-                    for line in process.stdout_lines:
-                        try:
-                            self.check_canceled()
-                        except Task.Canceled:
-                            process.kill()
-                            raise
-                        match = re.match(r"\r? *(\d{1,3})% ", line)
-                        if match:
-                            percent = int(match.group(1))
-                            if percent > self.get_progress():
-                                self.set_progress(percent)
-            except core.fs.zip._7zipError as error:
-                message = "7-Zip failed:\n" + describe_7zip_failure(
-                    error.output or "", error.returncode
-                )
-                if failure_hint:
-                    message += "\n" + failure_hint
-                show_alert(message)
+            with core.fs.zip._7zip(args, pty=True, **kwargs) as process:
+                for line in process.stdout_lines:
+                    try:
+                        self.check_canceled()
+                    except Task.Canceled:
+                        process.kill()
+                        raise
+                    match = re.match(r"\r? *(\d{1,3})% ", line)
+                    if match:
+                        progress = progress_offset + int(match.group(1))
+                        if progress > self.get_progress():
+                            self.set_progress(progress)
         finally:
             if _USER_7ZIP:
                 setattr(core.fs.zip, _BINARY_ATTR, _FMAN_7ZIP)
 
 
-class ExtractArchive(_7zipTaskWithProgress):
-    def __init__(self, zip_path: str, dest_path: str) -> None:
-        super().__init__("Extracting " + basename(zip_path), size=100)
-        self._zip_path = zip_path
-        self._dest_path = dest_path
+class ExtractArchives(_7zipTaskWithProgress):
+    def __init__(
+        self,
+        jobs: list[ExtractJob],
+        skipped: list[str],
+        failures: list[ExtractFailure],
+    ) -> None:
+        title = (
+            "Extracting " + basename(jobs[0].archive_path)
+            if len(jobs) == 1
+            else f"Extracting {len(jobs)} archives"
+        )
+        super().__init__(title, size=100 * max(len(jobs), 1))
+        self._jobs = jobs
+        self._skipped = skipped
+        self._failures = failures
 
     def __call__(self) -> None:
-        args = ["x", self._zip_path, "-o" + self._dest_path]
-        failure_hint = (
-            "Files extracted before the error are in " + self._dest_path + "."
-        )
-        self.run_7zip_with_progress(args, failure_hint=failure_hint)
+        for index, job in enumerate(self._jobs):
+            archive_name = basename(job.archive_path)
+            self.set_text(archive_name)
+            args = ["x", job.archive_path, "-o" + job.dest_path]
+            try:
+                self._run_7zip(args, progress_offset=100 * index)
+            except core.fs.zip._7zipError as error:
+                reason = describe_7zip_failure(error.output or "", error.returncode)
+                reason += (
+                    "\nFiles extracted before the error are in "
+                    + job.dest_path
+                    + "."
+                )
+                self._failures.append(ExtractFailure(archive_name, reason))
+            self.set_progress(100 * (index + 1))
+
+        summary = format_extract_summary(self._failures, self._skipped)
+        if summary:
+            show_alert(summary)
 
 
 def _get_hash(url, hash_type="crc32", consider_names=False):
